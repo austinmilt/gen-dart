@@ -1,0 +1,48 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install webrpc-gen
+        run: |
+          curl -o ./webrpc-gen -fLJO https://github.com/webrpc/webrpc/releases/download/v0.18.0/webrpc-gen.linux-amd64
+          chmod +x ./webrpc-gen
+          echo $PWD >> $GITHUB_PATH
+
+  webrpc-tests:
+    strategy:
+      matrix:
+        webrpc-version: [v0.18.0]
+        
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up webrpc binary cache folder
+        uses: actions/cache@v3
+        with:
+          key: webrpc-binaries
+          path: tests/bin
+
+      - name: Install dependencies
+        run: cd tests
+
+      - name: Download webrpc binaries
+        run: cd tests && ./scripts/download.sh ${{ matrix.webrpc-version }} .tmp/${{ matrix.webrpc-version }}
+
+      - name: Export path of webrpc binaries
+        run: cd tests && echo "$PWD/.tmp" >> $GITHUB_PATH
+
+      - name: Run interoperability tests
+        run: cd tests && ./scripts/test.sh
